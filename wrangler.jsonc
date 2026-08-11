@@ -1,5 +1,13 @@
 {
-  "name": "shewran-server",
+  "name": "shewran-api",
   "main": "src/index.js",
-  "compatibility_date": "2026-08-11"
+  "compatibility_date": "2026-08-11",
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "shewran-db",
+      "database_id": "26b27165-d17c-41ff-9753-51736424d153"
+    }
+  ]
 }
