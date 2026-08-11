@@ -3,7 +3,7 @@ export default {
 
     const url = new URL(request.url);
 
-    // صفحه اصلی API
+    // صفحه اصلی A
     if (url.pathname === "/" && request.method === "GET") {
       return json({
         success: true,
