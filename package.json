@@ -1,1 +1,16 @@
-
+{
+  "name": "shewran-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "شێوران خودرو API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "express": "4.21.2"
+  }
+}
