@@ -1,11 +1,10 @@
-export default 
+export default {
   async fetch(request, env) {
-
-    const url = new URL(request.url);
 
     // -----------------------------
     // CORS / OPTIONS
     // -----------------------------
+
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -13,10 +12,17 @@ export default
       });
     }
 
+    const url = new URL(request.url);
+
     // -----------------------------
-    // صفحه اصلی API
+    // صفحه اصلی
     // -----------------------------
-    if (url.pathname === "/" && request.method === "GET") {
+
+    if (
+      url.pathname === "/" &&
+      request.method === "GET"
+    ) {
+
       return json({
         success: true,
         app: "شێوران خودرو",
@@ -26,9 +32,13 @@ export default
     }
 
     // -----------------------------
-    // وضعیت سرور و دیتابیس
+    // وضعیت سرور
     // -----------------------------
-    if (url.pathname === "/api/status" && request.method === "GET") {
+
+    if (
+      url.pathname === "/api/status" &&
+      request.method === "GET"
+    ) {
 
       try {
 
@@ -54,229 +64,390 @@ export default
     }
 
     // -----------------------------
-    // جستجوی خودرو
-    // فقط داخل دیتابیس شێوران خودرو
+    // ثبت نام
     // -----------------------------
-    if (url.pathname === "/search" && request.method === "GET") {
 
-      const query =
-        (url.searchParams.get("q") || "").trim();
-
-      if (!query) {
-        return json({
-          success: false,
-          message: "عبارت جستجو وارد نشده است"
-        }, 400);
-      }
+    if (
+      url.pathname === "/register" &&
+      request.method === "POST"
+    ) {
 
       try {
 
-        const search = `%${query}%`;
+        const body = await request.json();
 
-        const result = await env.DB
-          .prepare(`
-            SELECT
-              id,
-              title,
-              brand,
-              model,
-              trim,
-              year,
-              price,
-              mileage,
-              color,
-              city,
-              transmission,
-              fuel,
-              engine_status,
-              gearbox_status,
-              chassis_status,
-              body_status,
-              interior_status,
-              document_status,
-              description,
-              phone,
-              image_url,
-              created_at
-            FROM cars
-            WHERE
-              title LIKE ?
-              OR brand LIKE ?
-              OR model LIKE ?
-              OR city LIKE ?
-            ORDER BY id DESC
-            LIMIT 50
-          `)
-          .bind(
-            search,
-            search,
-            search,
-            search
-          )
-          .all();
-
-        return json({
-          success: true,
-          query: query,
-          total: result.results.length,
-          cars: result.results
-        });
-
-      } catch (error) {
-
-        return json({
-          success: false,
-          message: "خطا در جستجوی خودرو",
-          error: error.message
-        }, 500);
-      }
-    }
-
-    // -----------------------------
-    // ثبت آگهی جدید
-    // -----------------------------
-    if (url.pathname === "/cars" && request.method === "POST") {
-
-      try {
-
-        const data = await request.json();
-
-        const title =
-          String(data.title || "").trim();
-
-        const brand =
-          String(data.brand || "").trim();
-
-        const model =
-          String(data.model || "").trim();
-
-        const city =
-          String(data.city || "").trim();
+        const name =
+          String(body.name || "").trim();
 
         const phone =
-          String(data.phone || "").trim();
+          String(body.phone || "").trim();
 
-        if (!title || !brand || !model || !city || !phone) {
+        const password =
+          String(body.password || "");
+
+        const city =
+          String(body.city || "").trim();
+
+        if (
+          !name ||
+          !phone ||
+          !password
+        ) {
 
           return json({
             success: false,
             message:
-              "عنوان، برند، مدل، شهر و شماره تماس الزامی است"
+              "نام، شماره موبایل و رمز عبور الزامی است"
           }, 400);
         }
 
-        const result = await env.DB
-          .prepare(`
-            INSERT INTO cars (
-              title,
-              brand,
-              model,
-              trim,
-              year,
-              price,
-              mileage,
-              color,
-              city,
-              transmission,
-              fuel,
-              engine_status,
-              gearbox_status,
-              chassis_status,
-              body_status,
-              interior_status,
-              document_status,
-              description,
-              phone,
-              image_url
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `)
-          .bind(
-            title,
-            brand,
-            model,
-            String(data.trim || "").trim(),
-            numberOrNull(data.year),
-            numberOrNull(data.price),
-            numberOrNull(data.mileage),
-            String(data.color || "").trim(),
-            city,
-            String(data.transmission || "").trim(),
-            String(data.fuel || "").trim(),
-            String(data.engine_status || "").trim(),
-            String(data.gearbox_status || "").trim(),
-            String(data.chassis_status || "").trim(),
-            String(data.body_status || "").trim(),
-            String(data.interior_status || "").trim(),
-            String(data.document_status || "").trim(),
-            String(data.description || "").trim(),
-            phone,
-            String(data.image_url || "").trim()
-          )
-          .run();
-
-        return json({
-          success: true,
-          message: "آگهی با موفقیت ثبت شد",
-          id: result.meta.last_row_id
-        }, 201);
-
-      } catch (error) {
-
-        return json({
-          success: false,
-          message: "ثبت آگهی انجام نشد",
-          error: error.message
-        }, 500);
-      }
-    }
-
-    // -----------------------------
-    // دریافت یک آگهی با ID
-    // -----------------------------
-    if (url.pathname.startsWith("/cars/") &&
-        request.method === "GET") {
-
-      const id =
-        url.pathname.split("/")[2];
-
-      if (!id) {
-        return json({
-          success: false,
-          message: "شناسه خودرو وارد نشده است"
-        }, 400);
-      }
-
-      try {
-
-        const car = await env.DB
-          .prepare(`
-            SELECT *
-            FROM cars
-            WHERE id = ?
-          `)
-          .bind(id)
-          .first();
-
-        if (!car) {
+        if (password.length < 6) {
 
           return json({
             success: false,
-            message: "آگهی پیدا نشد"
-          }, 404);
+            message:
+              "رمز عبور باید حداقل ۶ کاراکتر باشد"
+          }, 400);
         }
+
+        // بررسی وجود شماره
+        const existing =
+          await env.DB
+            .prepare(
+              "SELECT id FROM users WHERE phone = ?"
+            )
+            .bind(phone)
+            .first();
+
+        if (existing) {
+
+          return json({
+            success: false,
+            message:
+              "این شماره موبایل قبلاً ثبت شده است"
+          }, 409);
+        }
+
+        // هش رمز عبور
+        const passwordHash =
+          await hashPassword(password);
+
+        const result =
+          await env.DB
+            .prepare(`
+              INSERT INTO users
+              (
+                name,
+                phone,
+                password_hash,
+                city
+              )
+              VALUES (?, ?, ?, ?)
+            `)
+            .bind(
+              name,
+              phone,
+              passwordHash,
+              city
+            )
+            .run();
 
         return json({
           success: true,
-          car: car
+          message:
+            "ثبت نام با موفقیت انجام شد",
+          user: {
+            id: result.meta.last_row_id,
+            name: name,
+            phone: phone,
+            city: city
+          }
         });
 
       } catch (error) {
 
         return json({
           success: false,
-          message: "خطا در دریافت آگهی",
+          message:
+            "خطا در ثبت نام",
           error: error.message
+        }, 500);
+      }
+    }
+
+    // -----------------------------
+    // ورود
+    // -----------------------------
+
+    if (
+      url.pathname === "/login" &&
+      request.method === "POST"
+    ) {
+
+      try {
+
+        const body = await request.json();
+
+        const phone =
+          String(body.phone || "").trim();
+
+        const password =
+          String(body.password || "");
+
+        if (
+          !phone ||
+          !password
+        ) {
+
+          return json({
+            success: false,
+            message:
+              "شماره موبایل و رمز عبور را وارد کنید"
+          }, 400);
+        }
+
+        const user =
+          await env.DB
+            .prepare(`
+              SELECT
+                id,
+                name,
+                phone,
+                password_hash,
+                city
+              FROM users
+              WHERE phone = ?
+              LIMIT 1
+            `)
+            .bind(phone)
+            .first();
+
+        if (!user) {
+
+          return json({
+            success: false,
+            message:
+              "شماره موبایل یا رمز عبور اشتباه است"
+          }, 401);
+        }
+
+        const passwordHash =
+          await hashPassword(password);
+
+        if (
+          passwordHash !==
+          user.password_hash
+        ) {
+
+          return json({
+            success: false,
+            message:
+              "شماره موبایل یا رمز عبور اشتباه است"
+          }, 401);
+        }
+
+        return json({
+          success: true,
+          message:
+            "ورود با موفقیت انجام شد",
+          user: {
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            city: user.city
+          }
+        });
+
+      } catch (error) {
+
+        return json({
+          success: false,
+          message:
+            "خطا در ورود",
+          error: error.message
+        }, 500);
+      }
+    }
+
+    // -----------------------------
+    // جستجوی خودرو
+    // فقط داخل شێوران خودرو
+    // -----------------------------
+
+    if (
+      url.pathname === "/search" &&
+      request.method === "GET"
+    ) {
+
+      const query =
+        (
+          url.searchParams.get("q") ||
+          ""
+        ).trim();
+
+      if (!query) {
+
+        return json({
+          success: false,
+          message:
+            "عبارت جستجو وارد نشده است"
+        }, 400);
+      }
+
+      try {
+
+        const search =
+          `%${query}%`;
+
+        const result =
+          await env.DB
+            .prepare(`
+              SELECT
+                id,
+                title,
+                brand,
+                model,
+                year,
+                price,
+                mileage,
+                color,
+                city,
+                description,
+                phone,
+                image_url,
+                created_at
+              FROM cars
+              WHERE
+                title LIKE ?
+                OR brand LIKE ?
+                OR model LIKE ?
+                OR city LIKE ?
+              ORDER BY id DESC
+              LIMIT 50
+            `)
+            .bind(
+              search,
+              search,
+              search,
+              search
+            )
+            .all();
+
+        return json({
+          success: true,
+          query: query,
+          total:
+            result.results.length,
+          cars:
+            result.results
+        });
+
+      } catch (error) {
+
+        return json({
+          success: false,
+          message:
+            "خطا در جستجوی خودرو",
+          error:
+            error.message
+        }, 500);
+      }
+    }
+
+    // -----------------------------
+    // ثبت آگهی خودرو
+    // -----------------------------
+
+    if (
+      url.pathname === "/cars" &&
+      request.method === "POST"
+    ) {
+
+      try {
+
+        const body =
+          await request.json();
+
+        const title =
+          String(body.title || "").trim();
+
+        const brand =
+          String(body.brand || "").trim();
+
+        const model =
+          String(body.model || "").trim();
+
+        const city =
+          String(body.city || "").trim();
+
+        const phone =
+          String(body.phone || "").trim();
+
+        if (
+          !title ||
+          !brand ||
+          !model ||
+          !city ||
+          !phone
+        ) {
+
+          return json({
+            success: false,
+            message:
+              "اطلاعات اصلی آگهی کامل نیست"
+          }, 400);
+        }
+
+        const result =
+          await env.DB
+            .prepare(`
+              INSERT INTO cars
+              (
+                title,
+                brand,
+                model,
+                year,
+                price,
+                mileage,
+                color,
+                city,
+                description,
+                phone,
+                image_url
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `)
+            .bind(
+              title,
+              brand,
+              model,
+              numberValue(body.year),
+              numberValue(body.price),
+              numberValue(body.mileage),
+              String(body.color || ""),
+              city,
+              String(body.description || ""),
+              phone,
+              String(body.image_url || "")
+            )
+            .run();
+
+        return json({
+          success: true,
+          message:
+            "آگهی با موفقیت ثبت شد",
+          car_id:
+            result.meta.last_row_id
+        });
+
+      } catch (error) {
+
+        return json({
+          success: false,
+          message:
+            "خطا در ثبت آگهی",
+          error:
+            error.message
         }, 500);
       }
     }
@@ -284,6 +455,7 @@ export default
     // -----------------------------
     // مسیر پیدا نشد
     // -----------------------------
+
     return new Response(
       "Not Found",
       {
@@ -299,30 +471,10 @@ export default
 };
 
 
-// -----------------------------
-// تبدیل عدد
-// -----------------------------
-function numberOrNull(value) {
+// =================================================
+// توابع کمکی
+// =================================================
 
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return null;
-  }
-
-  const number = Number(value);
-
-  return Number.isFinite(number)
-    ? number
-    : null;
-}
-
-
-// -----------------------------
-// CORS
-// -----------------------------
 function corsHeaders() {
 
   return {
@@ -338,10 +490,18 @@ function corsHeaders() {
 // -----------------------------
 // JSON Response
 // -----------------------------
-function json(data, status = 200) {
+
+function json(
+  data,
+  status = 200
+) {
 
   return new Response(
-    JSON.stringify(data, null, 2),
+    JSON.stringify(
+      data,
+      null,
+      2
+    ),
     {
       status: status,
       headers: {
@@ -351,4 +511,65 @@ function json(data, status = 200) {
       }
     }
   );
+}
+
+
+// -----------------------------
+// تبدیل عدد
+// -----------------------------
+
+function numberValue(value) {
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+
+    return null;
+  }
+
+  const number =
+    Number(value);
+
+  if (
+    !Number.isFinite(number)
+  ) {
+
+    return null;
+  }
+
+  return number;
+}
+
+
+// -----------------------------
+// SHA-256 برای رمز عبور
+// -----------------------------
+
+async function hashPassword(
+  password
+) {
+
+  const data =
+    new TextEncoder()
+      .encode(password);
+
+  const hash =
+    await crypto.subtle.digest(
+      "SHA-256",
+      data
+    );
+
+  return Array
+    .from(
+      new Uint8Array(hash)
+    )
+    .map(
+      byte =>
+        byte
+          .toString(16)
+          .padStart(2, "0")
+    )
+    .join("");
 }
